@@ -196,15 +196,32 @@ export function getDocuments(): Document[] {
 }
 
 export function addDocument(document: Omit<Document, "id" | "created_at" | "updated_at">): Document {
+  console.log("[v0] addDocument 호출 - 문서 생성 시작")
+  console.log("[v0] 입력 데이터:", document)
+
   const documents = getDocuments()
+  console.log("[v0] 현재 저장된 문서 개수:", documents.length)
+
   const newDocument: Document = {
     ...document,
     id: generateId(),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
+
+  console.log("[v0] 생성된 문서 ID:", newDocument.id)
+  console.log("[v0] 생성된 문서 전체 데이터:", newDocument)
+
   documents.unshift(newDocument)
   saveToStorage(KEYS.DOCUMENTS, documents)
+
+  const verification = getDocumentById(newDocument.id)
+  if (verification) {
+    console.log("[v0] ✓ 문서 저장 검증 성공 - ID:", newDocument.id)
+  } else {
+    console.error("[v0] ✗ 문서 저장 검증 실패 - 저장되지 않음")
+  }
+
   return newDocument
 }
 
@@ -223,8 +240,24 @@ export function updateDocument(id: string, updates: Partial<Document>): void {
 }
 
 export function getDocumentById(id: string): Document | null {
+  console.log("[v0] getDocumentById 호출, ID:", id)
+
   const documents = getDocuments()
-  return documents.find((doc) => doc.id === id) || null
+  console.log("[v0] 저장된 문서 총 개수:", documents.length)
+
+  if (documents.length > 0) {
+    console.log("[v0] 저장된 문서 ID 목록:", documents.map((d) => d.id).join(", "))
+  }
+
+  const found = documents.find((doc) => doc.id === id)
+
+  if (found) {
+    console.log("[v0] 문서 발견:", found.title)
+  } else {
+    console.error("[v0] 문서를 찾을 수 없음 - 요청 ID:", id)
+  }
+
+  return found || null
 }
 
 // Quality Records CRUD

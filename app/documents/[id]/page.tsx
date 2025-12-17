@@ -3,21 +3,18 @@
 import type React from "react"
 import { notFound } from "next/navigation"
 
-import { Skeleton } from "@/components/ui/skeleton"
-
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { FileText, ArrowLeft, Sparkles, Loader2, Upload, X, AlertCircle } from "lucide-react"
+import { FileText, Sparkles, Loader2, Upload, X, AlertCircle, Database } from "lucide-react"
 import { getDocumentById } from "@/lib/storage"
 import type { Document } from "@/lib/types"
 import { extractTextFromFile } from "@/lib/file-extractor"
 import { format } from "date-fns"
 import { ko } from "date-fns/locale/ko"
 import { useToast } from "@/hooks/use-toast"
-import Link from "next/link"
 import {
   Dialog,
   DialogContent,
@@ -28,6 +25,8 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 
 interface DocumentAnalysisResult {
   comparison?: {
@@ -79,27 +78,59 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
 
   const [stage, setStage] = useState<string | null>(null)
 
+  const [isProduction, setIsProduction] = useState(false)
+
   useEffect(() => {
     setMounted(true)
   }, [])
 
   useEffect(() => {
     if (!mounted) return
+    const isProd = typeof window !== "undefined" && window.location.hostname !== "localhost"
+    setIsProduction(isProd)
+    if (isProd) {
+      console.log("[v0] 배포 환경 감지 - LocalStorage 기반으로 작동")
+    }
+  }, [mounted])
+
+  useEffect(() => {
+    if (!mounted) return
+
+    console.log("[v0] ===== 문서 로드 시작 =====")
+    console.log("[v0] 요청된 문서 ID:", params.id)
+    console.log("[v0] 현재 환경:", isProduction ? "배포(Production)" : "로컬(Development)")
 
     try {
       const doc = getDocumentById(params.id)
+      console.log("[v0] getDocumentById 결과:", doc ? "문서 발견" : "문서 없음")
+
       if (doc) {
+        console.log("[v0] 문서 정보:", {
+          id: doc.id,
+          title: doc.title,
+          document_type: doc.document_type,
+          status: doc.status,
+        })
         setDocument(doc)
-        // localStorage에서 자동으로 분석 결과를 로드하지 않음
       } else {
+        console.error("[v0] 문서를 찾을 수 없음 - ID:", params.id)
+        console.log("[v0] localStorage 데이터 확인 필요")
+
+        if (isProduction) {
+          console.error("[v0] 배포 환경: 브라우저 localStorage에 문서가 없습니다")
+          console.error("[v0] 문서 목록 페이지에서 새 문서를 생성하세요")
+        }
+
         notFound()
       }
     } catch (error) {
-      console.error("[v0] Failed to load document:", error)
+      console.error("[v0] 문서 로드 중 오류 발생:", error)
+      console.error("[v0] 오류 상세:", error instanceof Error ? error.message : String(error))
     } finally {
       setLoading(false)
+      console.log("[v0] ===== 문서 로드 완료 =====")
     }
-  }, [params.id, mounted])
+  }, [params.id, mounted, isProduction])
 
   const handleAnalyzeClick = () => {
     console.log("[v0] AI 심사 시작 버튼 클릭됨")
@@ -231,68 +262,45 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
     }
   }
 
-  if (!mounted || loading) {
+  if (loading || !mounted) {
     return (
-      <div className="flex min-h-svh flex-col">
-        <div className="flex items-center gap-4">
-          <Link href="/documents">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              목록으로
-            </Button>
-          </Link>
-        </div>
-        <main className="flex-1 p-6 md:p-10">
-          <div className="mx-auto max-w-4xl space-y-6">
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-96 w-full" />
-          </div>
-        </main>
+      <div className="flex min-h-svh items-center justify-center">
+        <div className="text-muted-foreground">로딩 중...</div>
       </div>
     )
   }
 
   if (!document) {
     return (
-      <div className="flex min-h-svh flex-col">
-        <div className="flex items-center gap-4">
-          <Link href="/documents">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              목록으로
-            </Button>
-          </Link>
+      <div className="flex min-h-svh items-center justify-center">
+        <div className="text-center space-y-4 max-w-md px-4">
+          <h2 className="text-2xl font-bold">문서를 찾을 수 없습니다</h2>
+          <p className="text-muted-foreground">
+            {isProduction
+              ? "브라우저 LocalStorage에 문서가 없습니다. 문서 목록 페이지에서 새 문서를 생성하세요."
+              : "요청하신 문서 ID가 존재하지 않습니다."}
+          </p>
+          <Button onClick={() => router.push("/documents")}>문서 목록으로 돌아가기</Button>
         </div>
-        <main className="flex-1 p-6 md:p-10">
-          <div className="mx-auto max-w-4xl">
-            <div className="text-center py-16">
-              <h2 className="text-2xl font-bold mb-2">문서를 찾을 수 없습니다</h2>
-              <p className="text-muted-foreground mb-6">요청하신 문서가 존재하지 않습니다.</p>
-              <Link href="/documents">
-                <Button>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  문서 목록으로 돌아가기
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </main>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-5xl">
-      <div className="flex items-center gap-4">
-        <Link href="/documents">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            목록으로
-          </Button>
-        </Link>
-      </div>
+    <div className="flex min-h-svh flex-col">
+      <DashboardHeader user={null} profile={null} />
       <main className="flex-1 p-6 md:p-10">
-        <div className="mx-auto max-w-4xl space-y-6">
+        <div className="mx-auto max-w-5xl space-y-6">
+          {isProduction && (
+            <Alert>
+              <Database className="h-4 w-4" />
+              <AlertTitle>데모 모드로 작동 중</AlertTitle>
+              <AlertDescription>
+                현재 브라우저 LocalStorage를 사용하고 있습니다. AI 심사 결과는 이 브라우저에만 저장됩니다.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Card>
             <CardHeader>
               <div className="flex items-start justify-between">
@@ -481,7 +489,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
 
           {analysisResult && (
             <div className="space-y-6">
-              {/* 1. 수기 vs QMSquare 비교 요약 */}
+              {/* 수기 vs QMSquare 비교 요약 */}
               {analysisResult.comparison && (
                 <Card>
                   <CardHeader>
@@ -570,7 +578,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
                 </Card>
               )}
 
-              {/* 2. 규제 심사 핵심 포인트 체크리스트 */}
+              {/* 규제 심사 핵심 포인트 체크리스트 */}
               {analysisResult.key_points && analysisResult.key_points.length > 0 && (
                 <Card>
                   <CardHeader>
@@ -590,7 +598,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
                 </Card>
               )}
 
-              {/* 3. 적용 규제 요구사항 (아코디언) */}
+              {/* 적용 규제 요구사항 (아코디언) */}
               {analysisResult.requirements && analysisResult.requirements.length > 0 && (
                 <Card>
                   <CardHeader>
@@ -615,7 +623,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
                 </Card>
               )}
 
-              {/* 4. 발견된 지적사항 상세 카드 */}
+              {/* 발견된 지적사항 상세 카드 */}
               {analysisResult.findings && analysisResult.findings.length > 0 && (
                 <Card>
                   <CardHeader>

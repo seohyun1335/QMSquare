@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { FileText, MoreVertical, Download, Edit, Trash2, Sparkles } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { ko } from "date-fns/locale/ko"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { deleteDocument } from "@/lib/storage"
 import type { Document } from "@/lib/types"
@@ -21,6 +21,14 @@ interface DocumentListProps {
 export function DocumentList({ documents, onRefresh }: DocumentListProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const { toast } = useToast()
+
+  useEffect(() => {
+    console.log("[v0] DocumentList 렌더링 - 문서 개수:", documents.length)
+    if (documents.length > 0) {
+      console.log("[v0] 표시할 문서 ID 목록:", documents.map((d) => d.id).join(", "))
+      console.log("[v0] 표시할 문서 제목:", documents.map((d) => d.title).join(" | "))
+    }
+  }, [documents])
 
   const handleDelete = async (id: string) => {
     setDeletingId(id)
@@ -121,47 +129,66 @@ export function DocumentList({ documents, onRefresh }: DocumentListProps) {
               </DropdownMenu>
             </div>
 
-            <Link href={`/documents/${doc.id}`} className="block space-y-3">
-              <div>
-                <h3 className="font-semibold text-base line-clamp-2 mb-1 hover:text-primary transition-colors">
-                  {doc.title}
-                </h3>
-                {doc.description && <p className="text-sm text-muted-foreground line-clamp-2">{doc.description}</p>}
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="text-xs">
-                  {doc.document_type}
-                </Badge>
-                <Badge variant={getStatusColor(doc.status)} className="text-xs">
-                  {doc.status}
-                </Badge>
-                {doc.version && (
-                  <Badge variant="secondary" className="text-xs">
-                    v{doc.version}
-                  </Badge>
-                )}
-              </div>
-
-              {doc.file_name && (
-                <div className="text-xs text-muted-foreground">
-                  <p className="truncate">{doc.file_name}</p>
-                  <p>{formatFileSize(doc.file_size)}</p>
+            {doc.id ? (
+              <Link href={`/documents/${doc.id}`} className="block space-y-3">
+                <div>
+                  <h3 className="font-semibold text-base line-clamp-2 mb-1 hover:text-primary transition-colors">
+                    {doc.title}
+                  </h3>
+                  {doc.description && <p className="text-sm text-muted-foreground line-clamp-2">{doc.description}</p>}
                 </div>
-              )}
 
-              <div className="text-xs text-muted-foreground pt-2 border-t">
-                업데이트: {formatDistanceToNow(new Date(doc.updated_at), { addSuffix: true, locale: ko })}
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="text-xs">
+                    {doc.document_type}
+                  </Badge>
+                  <Badge variant={getStatusColor(doc.status)} className="text-xs">
+                    {doc.status}
+                  </Badge>
+                  {doc.version && (
+                    <Badge variant="secondary" className="text-xs">
+                      v{doc.version}
+                    </Badge>
+                  )}
+                </div>
+
+                {doc.file_name && (
+                  <div className="text-xs text-muted-foreground">
+                    <p className="truncate">{doc.file_name}</p>
+                    <p>{formatFileSize(doc.file_size)}</p>
+                  </div>
+                )}
+
+                <div className="text-xs text-muted-foreground pt-2 border-t">
+                  업데이트: {formatDistanceToNow(new Date(doc.updated_at), { addSuffix: true, locale: ko })}
+                </div>
+              </Link>
+            ) : (
+              <div className="block space-y-3 opacity-50 cursor-not-allowed">
+                <div>
+                  <h3 className="font-semibold text-base line-clamp-2 mb-1">{doc.title}</h3>
+                  {doc.description && <p className="text-sm text-muted-foreground line-clamp-2">{doc.description}</p>}
+                </div>
+                <Badge variant="destructive" className="text-xs">
+                  문서 ID 오류
+                </Badge>
               </div>
-            </Link>
+            )}
 
             <div className="mt-4 pt-4 border-t">
-              <Link href={`/documents/${doc.id}`}>
-                <Button className="w-full bg-transparent" size="sm" variant="outline">
+              {doc.id ? (
+                <Link href={`/documents/${doc.id}`}>
+                  <Button className="w-full bg-transparent" size="sm" variant="outline">
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    AI 심사 시작
+                  </Button>
+                </Link>
+              ) : (
+                <Button className="w-full bg-transparent" size="sm" variant="outline" disabled>
                   <Sparkles className="h-4 w-4 mr-2" />
-                  AI 심사 시작
+                  문서 ID 오류
                 </Button>
-              </Link>
+              )}
             </div>
           </CardContent>
         </Card>

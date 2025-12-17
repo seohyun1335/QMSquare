@@ -47,36 +47,31 @@ export function NewDocumentDialog({ onSuccess }: NewDocumentDialogProps) {
 
       if (file) {
         fileId = generateId()
-        console.log("[v0] Saving file to IndexedDB with ID:", fileId)
-        console.log("[v0] File details:", {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-        })
+        console.log("[v0] 파일 저장 시작 - ID:", fileId, "파일명:", file.name)
 
         try {
           await saveFileToIndexedDB(fileId, file)
-          console.log("[v0] File successfully saved to IndexedDB")
+          console.log("[v0] 파일 저장 성공")
 
-          // Verify file was saved by trying to retrieve it
           const retrievedBlob = await getFileFromIndexedDB(fileId)
           if (retrievedBlob) {
-            console.log("[v0] File verification successful:", retrievedBlob.size, "bytes")
+            console.log("[v0] 파일 검증 성공:", retrievedBlob.size, "bytes")
           } else {
-            console.error("[v0] File verification failed: could not retrieve file immediately after saving")
+            console.error("[v0] 파일 검증 실패")
           }
         } catch (fileError) {
-          console.error("[v0] Failed to save file to IndexedDB:", fileError)
+          console.error("[v0] 파일 저장 실패:", fileError)
           toast({
             title: "파일 저장 실패",
-            description: "파일을 저장할 수 없습니다. 파일 없이 문서만 생성됩니다.",
+            description: "파일을 저장할 수 없습니다. 문서만 생성됩니다.",
             variant: "destructive",
           })
           fileId = null
         }
       }
 
-      // Create document with file_id
+      console.log("[v0] 문서 생성 시작 - 제목:", title, "타입:", documentType)
+
       const newDoc = addDocument({
         title,
         description: description || null,
@@ -86,21 +81,32 @@ export function NewDocumentDialog({ onSuccess }: NewDocumentDialogProps) {
         file_url: file ? `file://${file.name}` : null,
         file_name: file?.name || null,
         file_size: file?.size || null,
-        file_id: fileId, // Use the generated fileId
+        file_id: fileId,
       })
 
-      console.log("[v0] Document created with ID:", newDoc.id, "and file_id:", fileId)
+      console.log("[v0] ===== 문서 생성 완료 =====")
+      console.log("[v0] 생성된 문서 ID:", newDoc.id)
+      console.log("[v0] 문서 제목:", newDoc.title)
+      console.log("[v0] 문서 타입:", newDoc.document_type)
+      console.log("[v0] file_id:", newDoc.file_id)
+      console.log("[v0] =============================")
 
       toast({
         title: "문서 생성됨",
-        description: "문서가 성공적으로 생성되었습니다.",
+        description: `"${newDoc.title}" 문서가 생성되었습니다.`,
       })
 
       setOpen(false)
       resetForm()
-      onSuccess?.()
+
+      if (onSuccess) {
+        console.log("[v0] onSuccess 콜백 실행 - 목록 새로고침")
+        onSuccess()
+      } else {
+        console.warn("[v0] onSuccess 콜백이 제공되지 않음")
+      }
     } catch (error) {
-      console.error("[v0] Document creation error:", error)
+      console.error("[v0] 문서 생성 오류:", error)
       toast({
         title: "오류",
         description: error instanceof Error ? error.message : "문서 생성에 실패했습니다",
