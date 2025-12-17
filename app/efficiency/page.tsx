@@ -10,7 +10,7 @@ import { ROICalculator } from "@/components/efficiency/roi-calculator"
 import { WorkTimerWidget } from "@/components/efficiency/work-timer-widget"
 import { QualityCheckCard } from "@/components/efficiency/quality-check-card"
 import { ABComparisonReport } from "@/components/efficiency/ab-comparison-report"
-import { getWorkTimeLogs, getQualityChecks, getEfficiencySnapshots, initializeDemoData } from "@/lib/storage"
+import { getWorkTimeLogs, getQualityChecks, getEfficiencySnapshots } from "@/lib/storage"
 
 export default function EfficiencyPage() {
   const [workLogs, setWorkLogs] = useState<any[]>([])
@@ -25,13 +25,18 @@ export default function EfficiencyPage() {
 
   useEffect(() => {
     if (!mounted) return
+    loadEfficiencyData()
+  }, [mounted])
 
+  const loadEfficiencyData = async () => {
     try {
-      initializeDemoData()
+      const logs = await getWorkTimeLogs()
+      const checks = await getQualityChecks()
+      const snaps = await getEfficiencySnapshots()
 
-      setWorkLogs(getWorkTimeLogs())
-      setQualityChecks(getQualityChecks())
-      setSnapshots(getEfficiencySnapshots())
+      setWorkLogs(logs)
+      setQualityChecks(checks)
+      setSnapshots(snaps)
     } catch (error) {
       console.error("[v0] Failed to load efficiency data:", error)
       setWorkLogs([])
@@ -40,7 +45,7 @@ export default function EfficiencyPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [mounted])
+  }
 
   if (!mounted || isLoading) {
     return (
@@ -60,26 +65,21 @@ export default function EfficiencyPage() {
           <p className="text-muted-foreground">수기 작성 대비 QMSquare 사용 시 효율성 증명 및 ROI 분석</p>
         </div>
 
-        {/* 작업 측정 도구 */}
         <div className="grid gap-6 md:grid-cols-2 mb-8">
           <WorkTimerWidget />
           <QualityCheckCard />
         </div>
 
-        {/* 주요 지표 카드 */}
         <EfficiencyStats workLogs={workLogs || []} qualityChecks={qualityChecks || []} />
 
-        {/* A/B 비교 리포트 */}
         <div className="mb-8">
           <ABComparisonReport workLogs={workLogs || []} qualityChecks={qualityChecks || []} />
         </div>
 
-        {/* ROI 계산기 */}
         <div className="mb-8">
           <ROICalculator snapshots={snapshots || []} />
         </div>
 
-        {/* 차트 섹션 */}
         <div className="grid gap-6 md:grid-cols-2 mb-8">
           <TimeComparisonChart workLogs={workLogs || []} />
           <DefectComparisonChart qualityChecks={qualityChecks || []} />

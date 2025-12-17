@@ -9,6 +9,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import Image from "next/image"
+import { createClient } from "@/lib/supabase/client"
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("")
@@ -38,19 +39,29 @@ export default function SignUpPage() {
     }
 
     try {
-      // Store user in localStorage
-      localStorage.setItem(
-        "qms_user",
-        JSON.stringify({
-          email,
-          fullName,
-          organization,
-          isLoggedIn: true,
-        }),
-      )
+      const supabase = createClient()
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            organization,
+          },
+        },
+      })
 
-      router.push("/auth/sign-up-success")
+      if (signUpError) {
+        throw signUpError
+      }
+
+      if (data.user) {
+        console.log("[v0] 회원가입 성공:", data.user.email)
+        // Supabase sends confirmation email by default
+        router.push("/auth/sign-up-success")
+      }
     } catch (error: unknown) {
+      console.error("[v0] 회원가입 실패:", error)
       setError(error instanceof Error ? error.message : "회원가입에 실패했습니다")
     } finally {
       setIsLoading(false)

@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-import { notFound } from "next/navigation"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -70,6 +69,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
   const [analysisResult, setAnalysisResult] = useState<DocumentAnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [showLocalStorageWarning, setShowLocalStorageWarning] = useState(false)
 
   const [showFileModal, setShowFileModal] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -86,51 +86,36 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
 
   useEffect(() => {
     if (!mounted) return
-    const isProd = typeof window !== "undefined" && window.location.hostname !== "localhost"
-    setIsProduction(isProd)
-    if (isProd) {
-      console.log("[v0] 배포 환경 감지 - LocalStorage 기반으로 작동")
-    }
-  }, [mounted])
+    loadDocument()
+  }, [mounted, params.id])
 
-  useEffect(() => {
-    if (!mounted) return
+  const loadDocument = async () => {
+    const isProduction = typeof window !== "undefined" && window.location.hostname !== "localhost"
+    setShowLocalStorageWarning(isProduction)
 
-    console.log("[v0] ===== 문서 로드 시작 =====")
     console.log("[v0] 요청된 문서 ID:", params.id)
     console.log("[v0] 현재 환경:", isProduction ? "배포(Production)" : "로컬(Development)")
 
     try {
-      const doc = getDocumentById(params.id)
+      const doc = await getDocumentById(params.id)
       console.log("[v0] getDocumentById 결과:", doc ? "문서 발견" : "문서 없음")
 
       if (doc) {
         console.log("[v0] 문서 정보:", {
           id: doc.id,
           title: doc.title,
-          document_type: doc.document_type,
-          status: doc.status,
+          type: doc.document_type,
         })
         setDocument(doc)
       } else {
-        console.error("[v0] 문서를 찾을 수 없음 - ID:", params.id)
-        console.log("[v0] localStorage 데이터 확인 필요")
-
-        if (isProduction) {
-          console.error("[v0] 배포 환경: 브라우저 localStorage에 문서가 없습니다")
-          console.error("[v0] 문서 목록 페이지에서 새 문서를 생성하세요")
-        }
-
-        notFound()
+        console.error("[v0] 문서를 찾을 수 없습니다")
+        setDocument(null)
       }
     } catch (error) {
-      console.error("[v0] 문서 로드 중 오류 발생:", error)
-      console.error("[v0] 오류 상세:", error instanceof Error ? error.message : String(error))
-    } finally {
-      setLoading(false)
-      console.log("[v0] ===== 문서 로드 완료 =====")
+      console.error("[v0] 문서 로드 중 오류:", error)
+      setDocument(null)
     }
-  }, [params.id, mounted, isProduction])
+  }
 
   const handleAnalyzeClick = () => {
     console.log("[v0] AI 심사 시작 버튼 클릭됨")
@@ -276,7 +261,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
         <div className="text-center space-y-4 max-w-md px-4">
           <h2 className="text-2xl font-bold">문서를 찾을 수 없습니다</h2>
           <p className="text-muted-foreground">
-            {isProduction
+            {showLocalStorageWarning
               ? "브라우저 LocalStorage에 문서가 없습니다. 문서 목록 페이지에서 새 문서를 생성하세요."
               : "요청하신 문서 ID가 존재하지 않습니다."}
           </p>
@@ -291,7 +276,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
       <DashboardHeader user={null} profile={null} />
       <main className="flex-1 p-6 md:p-10">
         <div className="mx-auto max-w-5xl space-y-6">
-          {isProduction && (
+          {showLocalStorageWarning && (
             <Alert>
               <Database className="h-4 w-4" />
               <AlertTitle>데모 모드로 작동 중</AlertTitle>

@@ -72,7 +72,7 @@ export function NewDocumentDialog({ onSuccess }: NewDocumentDialogProps) {
 
       console.log("[v0] 문서 생성 시작 - 제목:", title, "타입:", documentType)
 
-      const newDoc = addDocument({
+      const newDoc = await addDocument({
         title,
         description: description || null,
         document_type: documentType,
@@ -109,7 +109,7 @@ export function NewDocumentDialog({ onSuccess }: NewDocumentDialogProps) {
       console.error("[v0] 문서 생성 오류:", error)
       toast({
         title: "오류",
-        description: error instanceof Error ? error.message : "문서 생성에 실패했습니다",
+        description: error instanceof Error ? error.message : "문서 생성에 실패했습니다. 로그인이 필요할 수 있습니다.",
         variant: "destructive",
       })
     } finally {

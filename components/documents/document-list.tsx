@@ -34,7 +34,7 @@ export function DocumentList({ documents, onRefresh }: DocumentListProps) {
     setDeletingId(id)
 
     try {
-      deleteDocument(id)
+      await deleteDocument(id)
 
       toast({
         title: "문서 삭제됨",

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { createClient } from "@/lib/supabase/client"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -23,16 +24,26 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      // Simple demo login - accept any email/password
       if (!email || !password) {
         throw new Error("이메일과 비밀번호를 입력해주세요")
       }
 
-      // Store user in localStorage
-      localStorage.setItem("qms_user", JSON.stringify({ email, isLoggedIn: true }))
+      const supabase = createClient()
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-      router.push("/dashboard")
+      if (signInError) {
+        throw signInError
+      }
+
+      if (data.user) {
+        console.log("[v0] 로그인 성공:", data.user.email)
+        router.push("/dashboard")
+      }
     } catch (error: unknown) {
+      console.error("[v0] 로그인 실패:", error)
       setError(error instanceof Error ? error.message : "로그인에 실패했습니다")
     } finally {
       setIsLoading(false)
